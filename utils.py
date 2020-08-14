@@ -4,12 +4,13 @@ import time
 from datetime import timedelta
 import pickle as pkl
 import os
+import sys
 
 PAD, CLS = '[PAD]', '[CLS]'
 
 def load_dataset(file_path, config):
     """
-    返回结果 4个list ids, lable, ids_len, mask
+    返回结果 4个list ids, label, ids_len, mask
     :param file_path:
     :param seq_len:
     :return:
@@ -17,27 +18,28 @@ def load_dataset(file_path, config):
     contents = []
     with open(file_path, 'r', encoding='UTF-8') as f:
         for line in tqdm(f):
-            line = line.strip()
-            if not line:
+            try:
+                content, label = line.strip().split('\t')
+            except:
                 continue
-            content, lable = line.split('\t')
             token = config.tokenizer.tokenize(content)
             token = [CLS] +token
-            seq_len = len(token)
-            mask = []
-            token_ids = config.tokenizer.convert_tokens_to_ids(token)
-
+            
             pad_size = config.pad_size
-
-            if pad_size:
+            token_ids = config.tokenizer.convert_tokens_to_ids(token)
+            mask = []
+            if pad_size > 0:
                 if len(token) < pad_size:
-                    mask = [1] * len(token_ids) + [0] * (pad_size - len(token))
-                    token_ids = token_ids + ([0] * (pad_size - len(token)))
+                    mask = [1]*len(token_ids) + [0]*(pad_size-len(token))
+                    token_ids = token_ids + [0]*(pad_size-len(token))
                 else:
                     mask = [1] * pad_size
                     token_ids = token_ids[:pad_size]
-                    seq_len = pad_size
-            contents.append((token_ids, int(lable), seq_len, mask))
+            else:
+                sys.stderr.write("utils::load_dataset(..) failed.\n")
+                sys.exit(-1)
+            seq_len = min(len(token), pad_size)
+            contents.append((token_ids, int(label), seq_len, mask))
     return contents
 
 def build_dataset(config):
@@ -64,15 +66,16 @@ def build_dataset(config):
 
 class DatasetIterator(object):
     def __init__(self, dataset, batch_size, device):
-        self.batch_size = batch_size
         self.dataset = dataset
+
+        self.batch_size = batch_size
         self.n_batches = len(dataset) // batch_size
         self.residue = False #记录batch数量是否为整数
         if len(dataset) % self.n_batches != 0:
             self.residue = True
+
         self.index = 0
         self.device = device
-
     def _to_tensor(self, datas):
         x = torch.LongTensor([item[0] for item in datas]).to(self.device) #样本数据ids
         y = torch.LongTensor([item[1] for item in datas]).to(self.device) #标签数据label
@@ -88,7 +91,7 @@ class DatasetIterator(object):
             self.index += 1
             batches = self._to_tensor(batches)
             return batches
-        elif self.index > self.n_batches:
+        elif self.index >= self.n_batches:
             self.index = 0
             raise StopIteration
         else:
