@@ -50,8 +50,8 @@ def train(config, model, train_iter, dev_iter, test_iter):
             optimizer.step()
             if total_batch % 100 == 0: #每多少次输出在训练集和校验集上的效果
                 true = labels.data.cpu()
-                predit = torch.max(outputs.data, 1)[1].cpu()
-                train_acc = metrics.accuracy_score(true, predit)
+                predict = torch.max(outputs.data, 1)[1].cpu()
+                train_acc = metrics.accuracy_score(true, predict)
                 dev_acc, dev_loss = evaluate(config, model, dev_iter)
                 if dev_loss < dev_best_loss:
                     dev_best_loss = dev_loss
