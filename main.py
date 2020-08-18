@@ -7,7 +7,8 @@ import utils
 import train
 
 parser = argparse.ArgumentParser(description='Skyer-Bert-Text-Classsification')
-parser.add_argument('--model', type=str, default='SkyerBertCNN', help = 'choose a model SkyerBert, SkyerBertCNN')
+parser.add_argument('--model', type=str, default='SkyerBertRNN',
+                    help = 'choose a model SkyerBert, SkyerBertCNN, SkyerBertRNN')
 args = parser.parse_args()
 
 if __name__ == '__main__':
